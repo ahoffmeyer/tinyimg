@@ -52,7 +52,9 @@ class CompressImageService
         $configurationUtility = $this->objectManager->get(ConfigurationUtility::class);
         $this->extConf = $configurationUtility->getCurrentConfiguration('tinyimg');
 
-        $this->initCdn();
+        if (ExtensionManagementUtility::isLoaded('aus_driver_amazon_s3')) {
+            $this->initCdn();
+        }
     }
 
     /**
