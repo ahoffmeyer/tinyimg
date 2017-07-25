@@ -6,6 +6,7 @@ use Aws\S3\S3Client;
 
 use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\Folder;
+use TYPO3\CMS\Core\Resource\Index\Indexer;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
@@ -24,7 +25,6 @@ class CompressImageService
 {
     /**
      * @var \TYPO3\CMS\Extbase\Object\ObjectManagerInterface
-     * @inject
      */
     protected $objectManager;
 
@@ -45,9 +45,12 @@ class CompressImageService
 
     /**
      * CompressImageService constructor.
+     * @param ObjectManagerInterface $objectManager
      */
-    public function initAction()
+    public function __construct(ObjectManagerInterface $objectManager)
     {
+        $this->objectManager = $objectManager;
+
         /** @var ConfigurationUtility $configurationUtility */
         $configurationUtility = $this->objectManager->get(ConfigurationUtility::class);
         $this->extConf = $configurationUtility->getCurrentConfiguration('tinyimg');
@@ -79,8 +82,6 @@ class CompressImageService
      */
     public function initializeCompression($file, $folder)
     {
-        $this->initAction();
-
         \Tinify\setKey($this->getApiKey());
         $this->settings = $this->getTypoScriptConfiguration();
 
@@ -93,6 +94,8 @@ class CompressImageService
                 $source->toFile($publicUrl);
             }
         }
+
+        $this->updateFileInformation($file);
     }
 
     /**
@@ -207,5 +210,15 @@ class CompressImageService
             ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
             'tinyimg'
         );
+    }
+
+    /**
+     * @param File $file
+     */
+    protected function updateFileInformation($file)
+    {
+        /** @var Indexer $fileIndexer */
+        $fileIndexer = $this->objectManager->get(Indexer::class, $file->getStorage());
+        $fileIndexer->updateIndexEntry($file);
     }
 }
