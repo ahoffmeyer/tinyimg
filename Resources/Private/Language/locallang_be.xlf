@@ -24,6 +24,12 @@
 			<trans-unit id="version">
                 <source>Enter the AWS version</source>
             </trans-unit>
+			<trans-unit id="useGuetzli">
+                <source>Use guetzli for JPEG compression</source>
+            </trans-unit>
+			<trans-unit id="jpegQuality">
+                <source>JPEG quality for guetzi compression</source>
+            </trans-unit>
 		</body>
 	</file>
 </xliff>

@@ -19,3 +19,9 @@ region =
 
 # cat=basic/enable; type=string; label=LLL:EXT:tinyimg/Resources/Private/Language/locallang_be.xlf:version
 version = 2006-03-01
+
+# cat=basic/enable; type=boolean; label=LLL:EXT:tinyimg/Resources/Private/Language/locallang_be.xlf:useGuetzli
+useGuetzli = 1
+
+# cat=basic/enable; type=string; label=LLL:EXT:tinyimg/Resources/Private/Language/locallang_be.xlf:jpegQuality
+jpegQuality = 60

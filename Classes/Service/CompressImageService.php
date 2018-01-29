@@ -82,18 +82,56 @@ class CompressImageService
      */
     public function initializeCompression($file, $folder)
     {
-        \Tinify\setKey($this->getApiKey());
-        $this->settings = $this->getTypoScriptConfiguration();
+        if ((int)$this->settings['debug'] === 1) {
+            return;
+        }
 
-        if ((int)$this->settings['debug'] === 0 && in_array(strtolower($file->getExtension()), ['png', 'jpg', 'jpeg'], true)) {
-            if ($this->checkForAmazonCdn($folder, $file)) {
-                $this->pushToTinyPngAndStoreToCdn($file);
-            } else {
-                $publicUrl = PATH_site . $file->getPublicUrl();
-                $source = \Tinify\fromFile($publicUrl);
-                $source->toFile($publicUrl);
+        if ($this->extConf['useGuetzli'] && in_array(strtolower($file->getExtension()), ['jpg', 'jpeg'], true)) {
+            $this->compressJpegWithGuetzli($file, $folder);
+        } else {
+            \Tinify\setKey($this->getApiKey());
+            $this->settings = $this->getTypoScriptConfiguration();
+
+            if (in_array(strtolower($file->getExtension()), ['png'], true)) {
+                if ($this->checkForAmazonCdn($folder, $file)) {
+                    $this->pushToTinyPngAndStoreToCdn($file);
+                } else {
+                    $publicUrl = PATH_site . $file->getPublicUrl();
+                    $source = \Tinify\fromFile($publicUrl);
+                    $source->toFile($publicUrl);
+                }
             }
         }
+
+        $this->updateFileInformation($file);
+    }
+
+    /**
+     * @param File $file
+     * @param Folder $folder
+     *
+     * @return void
+     */
+    public function compressJpegWithGuetzli($file, $folder)
+    {
+        $publicUrl = $file->getPublicUrl();
+        $fileContent = $file->getContents();
+        $tempFile = PATH_site . 'typo3temp' . DIRECTORY_SEPARATOR . time() .'_'.  $this->getCdnFileName($publicUrl);
+        $output = [];
+
+        GeneralUtility::writeFileToTypo3tempDir($tempFile, $fileContent);
+
+        exec('guetzli --quality 85 '. $tempFile .' '. $tempFile, $output);
+
+        // upload to CDN
+        if ($this->checkForAmazonCdn($folder, $file)) {
+            $this->pushToS3Bucket($file, $tempFile);
+        } else {
+            GeneralUtility::upload_copy_move($tempFile, PATH_site . $publicUrl);
+        }
+
+        // remove temp file
+        GeneralUtility::unlink_tempfile($tempFile);
 
         $this->updateFileInformation($file);
     }
@@ -138,18 +176,28 @@ class CompressImageService
         $source->toFile($tempFile);
 
         // upload to CDN
+        $this->pushToS3Bucket($file, $tempFile);
+
+        // remove temp file
+        GeneralUtility::unlink_tempfile($tempFile);
+    }
+
+    /**
+     * @param File $file
+     * @param $sourceFile
+     */
+    public function pushToS3Bucket($file, $sourceFile)
+    {
+        // upload to CDN
         try {
             $this->client->putObject([
                 'Bucket' => $this->extConf['bucket']['value'],
                 'Key' => $file->getIdentifier(),
-                'SourceFile' => $tempFile
+                'SourceFile' => $sourceFile
             ]);
         } catch(S3Exception $e) {
             throw new S3Exception($e->getMessage());
         }
-
-        // remove temp file
-        GeneralUtility::unlink_tempfile($tempFile);
     }
 
     /**
