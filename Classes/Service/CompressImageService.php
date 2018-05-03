@@ -121,7 +121,7 @@ class CompressImageService
 
         GeneralUtility::writeFileToTypo3tempDir($tempFile, $fileContent);
 
-        exec('guetzli --quality 85 '. $tempFile .' '. $tempFile, $output);
+        // exec('guetzli --quality 85 '. $tempFile .' '. $tempFile, $output);
 
         // upload to CDN
         if ($this->checkForAmazonCdn($folder, $file)) {
